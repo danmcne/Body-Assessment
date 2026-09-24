@@ -5,12 +5,16 @@ A spreadsheet (LibreOffice `.ods` and Excel `.xlsx`) and a Jupyter notebook that
 | Attribute | What it measures | Target (score = 1) |
 |---|---|---|
 | **Leanness** | Waist-to-height ratio | 0.45 or lower (score 0 at 0.60) |
-| **Fitness** | Estimated VO2max as a percentile for sex and age | 100th percentile (score = percentile / 100) |
-| **Strength** | Relative strength across five lift categories, Symmetric Strength method | Age-adjusted Wilks 400 in every category |
-| **Size** | Lean mass against a natural ceiling | Men: Casey Butt's frame-based maximum; women: FFMI 23.9 |
+| **Fitness** | Estimated VO2max (median of the tests entered) | FRIEND 2022 90th percentile for sex, age and test mode; can exceed 1 |
+| **Strength** | Relative strength across five lift categories, scored as Symmetric Strength does | Age-adjusted Wilks 400 in every category; can exceed 1 |
+| **Size** | Lean mass against an upper reference (a population upper edge, not a limit) | Men: Casey Butt's frame-based estimate; women: FFMI 23.9; can exceed 1 |
 | **Proportion** | Shape against ideal ratios (the waist is excluded; it counts only under leanness) | Classical ratios (men); hip and shoulder ratios (women) |
 
-Each measurement counts once. The attributes are combined by a **weighted geometric mean**, so a weak attribute cannot be bought back by a strong one. You set the weights either by ranking **health, looks and performance** (Purposes sheet) or by ranking the five attributes directly (Attributes sheet).
+Each measurement counts once. Read the five scores as a **profile** first. They are also combined into a **weighted geometric mean**, so a weak attribute cannot be bought back by a strong one.
+
+- **Weights:** you set them either by ranking **fitness-related health, looks and performance** (Purposes sheet) or by ranking the five attributes directly (Attributes sheet).
+- **Ranges:** the composite carries a range from the body-fat and fitness-test errors.
+- **Coverage:** the share of your chosen weight that has data. Below 100% the composite is marked **provisional**, since leaving out a weak attribute would otherwise raise it.
 
 A **Plan** sheet then ranks what to work on:
 - waist milestones with diet and cardio guidance;
@@ -29,7 +33,7 @@ The workbook supports **men and women**. The female assessment has additional li
 |---|---|
 | `body_assessment.ods` | Workbook, LibreOffice format |
 | `body_assessment.xlsx` | The same workbook, Excel format |
-| `body_assessment.ipynb` | Independent Python implementation: plots, measurement history, lever ranking, and a cross-check against the workbook |
+| `body_assessment.ipynb` | Optional, for Python users: a second implementation of the same rules, with plots, measurement history, a lever ranking and a cross-check against the workbook. The workbook is the tool and the source of truth |
 
 ## Quick start
 
@@ -50,7 +54,8 @@ jupyter notebook body_assessment.ipynb
 ```
 
 - Set `WORKBOOK` in the first code cell to the `.xlsx` or `.ods` file.
-- The notebook holds no data or constants of its own. It reads everything from the workbook, recomputes every result independently, and its last cells report whether it agrees with the workbook.
+- The notebook holds no data or constants of its own. It reads everything from the workbook, recomputes every result with its own code, and reports whether the two agree.
+- This catches implementation errors in either version, not errors in the shared rules.
 - Save the workbook in Excel or LibreOffice before running, so the cached values exist for the cross-check.
 
 ## Measuring
@@ -68,34 +73,41 @@ jupyter notebook body_assessment.ipynb
 - **Lifts**
   - Load is the total weight moved: bar, plates and collars.
   - For chin-ups, pull-ups and dips, enter the added weight (negative if assisted).
-  - Reps are to failure, whole numbers 1–10.
-  - 45° leg press: sled plus plates.
+  - Reps are to failure, whole numbers 1–10; other rep counts are not scored.
+  - **Leg press: 45° sled machines only**, load = sled plus plates. Horizontal, vertical and lever leg presses are not comparable.
   - Gym bars and plates are often not their nominal weight. Weigh the bar by stepping on a bathroom scale with and without it, and weigh small plates on a kitchen scale.
-- **Fitness tests:** Rockport 1-mile walk (time and finish heart rate), Cooper 12-minute run, any timed run of 1.5–42 km, or a cycle ramp test with peak watts. Swimming and elliptical results are not comparable and are not accepted.
+- **Fitness tests:** Rockport 1-mile walk (time and finish heart rate), Cooper 12-minute run, or a cycle ramp test with peak watts. With several tests, the median score is used.
+  - Race times (5 km etc.) are **not** accepted: Daniels' VDOT measures running performance, not VO2max.
+  - Swimming and elliptical results are not comparable and are not accepted.
 
 ## Sheets
 
 | Sheet | Contents |
 |---|---|
 | Read me | Instructions and limitations |
-| Summary | Attribute scores, composite, weighting switch |
+| Summary | Attribute scores with ranges, composite, coverage, weighting switch |
 | Attributes | Rank the five attributes directly; read-only purpose view of that ranking |
-| Purposes | Rank health, looks and performance; the effective attribute weights that ranking implies |
+| Purposes | Rank fitness-related health, looks and performance; the effective attribute weights that ranking implies |
 | Plan | Waist milestones, cardio targets, strength and size priorities, muscle-group tiers, exercise ranking |
-| Report | Body composition, fitness, proportion, left/right symmetry, size ceilings, maximum girths |
-| Strength | Estimated 1RMs and rep maxes, scores, tiers, symmetry, estimated powerlifting total and Wilks, muscle groups, charts |
+| Report | Body composition with error ranges, fitness, proportion, left/right symmetry, size upper references, maximum girths |
+| Strength | Estimated 1RMs and rep maxes, scores, tiers, strength balance, estimated powerlifting total and Wilks, muscle groups, charts |
 | Measurements | All inputs, one column per date |
-| Parameters | Every constant, with its source: shared, sex-specific (male / female / in use), ratios, lift factors, norms, exercise library |
+| Parameters | Every constant with its source (or marked as a judgment): shared, sex-specific (male / female / in use), ratios, lift factors, equipment and confidence per lift, norms, exercise library |
 
 ## Method in brief
 
-- **Body fat:** the US Navy circumference equations; the female version adds hips.
+- **Body fat:** the US Navy circumference equations; the female version adds hips. The formula's standard error (3.5 percentage points for men, 3.7 for women) is carried into lean mass, the size score and the composite as a range.
+- **Fitness:** each test's VO2max estimate is divided by the FRIEND 90th percentile for your sex, age decade and test mode, and the median across tests is used.
+  - Percentiles are interpolated only within FRIEND's published 10th–90th range; nothing is extrapolated.
 - **Strength**
   - One-rep maximum from Wathan's formula.
   - Each lift is converted to a deadlift equivalent via lift ratios.
   - A lift's score is a quarter of the age-adjusted Wilks score of the powerlifting total it implies. This is Symmetric Strength's published definition.
-  - The composite uses the geometric mean of the five category scores, so imbalance lowers the result. The symmetry score is 100 × geometric mean ÷ arithmetic mean.
-- **Size:** lean mass (weight minus Navy fat) divided by a ceiling.
+  - The composite uses the geometric mean of the five category scores, so imbalance lowers the result. **Strength balance** is 100 × geometric mean ÷ arithmetic mean. "Symmetry" is kept for left/right differences.
+  - Every lift has a confidence class: high for the benchmark lifts, medium for converted variants, low for machines. A machine lift (45° sled leg press, lat pulldown, seated cable row) counts for its category only when no free-weight lift is entered there; it always counts for the muscle groups.
+  - Belt squats are not included: machine designs vary too much for a usable conversion.
+  - Muscle-group scores are **inspired by** Symmetric Strength. They use its lift lists with equal weights, because its weights are unpublished.
+- **Size:** lean mass (weight minus Navy fat) divided by an upper reference.
   - Men: Casey Butt's formula from height, wrist and ankle.
   - Women: FFMI 23.9 × height².
 - **Proportion:** the root-mean-square of the log deviations from the ideal ratios, reported as exp(−RMS).
@@ -108,17 +120,25 @@ jupyter notebook body_assessment.ipynb
 **General**
 
 - Tape-based body fat has a standard error of about 3–4 percentage points. Field-test VO2max estimates carry roughly ±5 ml/kg/min.
-- The potential models (Butt, Berkhan, FFMI ceilings) describe elite drug-free athletes. They are an upper envelope, not an expectation.
+- The size references (Butt, Berkhan, FFMI 25 for men, FFMI 23.9 for women) are upper edges of particular athlete samples, not biological limits. Scores above 1 are possible.
+- "Health" means **fitness-related** health only. There are no blood pressure, blood markers, activity or disease data.
+- Only the body-fat and fitness-test errors are propagated. The 1RM-estimate error (about 5%) is not.
 - Classical proportion ideals are conventions, not health standards.
 - Some lift ratios are marked `ESTIMATE` or `USER ASSUMPTION` on Parameters: sumo deadlift, snatch press, pull-up, lat pulldown, seated cable row and leg press. Scores for those lifts will differ from symmetricstrength.com.
-- Weights, thresholds, target body fat and the waist-to-height endpoint of 0.45 are judgments. All are editable.
+- Several values are heuristics, labelled as such and editable:
+  - the 10% strength-classification tolerance;
+  - weekly set ranges;
+  - interval and protein guidance;
+  - rank-to-weight mapping (1/rank); type points for exact control;
+  - target body fat;
+  - the 0.45 waist-to-height endpoint. This is a physique target; the health bands treat the whole 0.4–0.5 range as fine.
 
 **Additional limitations of the female assessment**
 
 - **Size:** Casey Butt's formula and maximum girths exist for men only.
-  - Women are scored against a height-only FFMI ceiling of 23.9, the 97.5th percentile of drug-tested female college athletes.
+  - Women are scored against a height-only FFMI upper reference of 23.9, the 97.5th percentile of drug-tested female college athletes. In that study, rugby players reached 25.8 and the highest value observed was 27.2.
   - Symmetric Strength uses 19.2 instead.
-  - The true ceiling is uncertain, and frame size is ignored.
+  - Frame size is ignored.
 - **Proportion:** there are no classical female limb ideals. Only two ratios are scored:
   - hips relative to height, implied by a waist/hip ratio of 0.70 at the leanness target. The WHR finding is contested and based mostly on men's ratings of attractiveness.
   - shoulders ≈ hips. This is a judgment made by analogy with the "hourglass" definition.
@@ -138,10 +158,11 @@ Default rankings are neutral for both sexes. Nothing in the workbook assumes wha
 
 ### Body composition and leanness
 - Hodgdon JA, Beckett MB. *Prediction of percent body fat for U.S. Navy men and women from body circumferences and height.* Naval Health Research Center, San Diego, 1984 (Reports 84-11 and 84-29).
+- Institute of Medicine. *Assessing Readiness in Military Women: The Relationship of Body Composition, Nutrition, and Health.* National Academies Press, 1998 (Navy-equation standard errors).
 - Ashwell M, Gibson S. Waist-to-height ratio as an indicator of "early health risk". *BMJ Open* 2016;6:e010159.
 - American Council on Exercise. Body-fat percentage categories (source of the 22% female target-body-fat convention).
 
-### Size ceilings and girths
+### Size upper references and girths
 - Butt C. *Your Maximum Muscular Bodyweight and Measurements* (weightrainer.net) and *Your Muscular Potential*.
 - Berkhan M. Maximum muscular potential of drug-free athletes. leangains.com, 2010.
 - Kouri EM, Pope HG, Katz DL, Oliva P. Fat-free mass index in users and nonusers of anabolic-androgenic steroids. *Clin J Sport Med* 1995;5(4):223–228.
@@ -165,10 +186,9 @@ Default rankings are neutral for both sexes. Nothing in the workbook assumes wha
 - Foster and McCulloch age coefficients, USA Powerlifting age-coefficient table.
 
 ### Fitness
-- Kaminsky LA et al. Updated reference standards for cardiorespiratory fitness measured with cardiopulmonary exercise testing: data from FRIEND. *Mayo Clin Proc* 2022;97(2):285–293. Open access, CC BY-NC-ND 4.0. Table 3 percentiles are reproduced as numerical data with attribution.
+- Kaminsky LA et al. Updated reference standards for cardiorespiratory fitness measured with cardiopulmonary exercise testing: data from FRIEND. *Mayo Clin Proc* 2022;97(2):285–293. Open access, CC BY-NC-ND 4.0. Table 3 percentiles are reproduced as numerical data with attribution. The 90th percentile is the fitness reference.
 - Kline GM et al. Estimation of VO2max from a one-mile track walk, gender, age, and body weight. *Med Sci Sports Exerc* 1987;19(3):253–259.
 - Cooper KH. A means of assessing maximal oxygen intake. *JAMA* 1968;203:201–204.
-- Daniels J, Gilbert J. *Oxygen Power.* 1979 (VDOT equations).
 - American College of Sports Medicine. *ACSM's Guidelines for Exercise Testing and Prescription* (leg-cycling metabolic equation).
 - Kodama S et al. Cardiorespiratory fitness as a quantitative predictor of all-cause mortality and cardiovascular events. *JAMA* 2009;301(19):2024–2035.
 
